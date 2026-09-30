@@ -25,7 +25,7 @@ export const config = {
     proofread: { limit: Number(process.env.RATE_LIMIT_PROOFREAD) || 20, windowMs: 60000 },
   },
   gemini: {
-    apiKey: requireEnv("GEMINI_API_KEY"),
+    apiKey: process.env.GEMINI_API_KEY || "",
     model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS) || 30000,
   },
