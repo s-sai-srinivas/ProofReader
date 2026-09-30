@@ -1,0 +1,16 @@
+node_modules
+.git
+.gitignore
+.next
+.env
+.env.example
+*.md
+plan.md
+AGENTS.md
+CLAUDE.md
+dev.db
+*.db
+.gitkeep
+.next
+out
+build

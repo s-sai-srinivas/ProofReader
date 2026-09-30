@@ -1,0 +1,158 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organization {
+  id        String     @id @default(cuid())
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  users     User[]
+  rules     Rule[]
+  documents Document[]
+  categories Category[]
+  roles     Role[]
+  settings  Setting[]
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  passwordHash String
+  role         String       @default("PUBLISHER")
+  roleId       String?
+  roleRel      Role?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  documents    Document[]
+}
+
+model Rule {
+  id           String       @id @default(cuid())
+  pattern      String
+  replacement  String
+  category     String       // GRAMMAR, CLARITY, TONE, STYLE
+  explanation  String
+  isActive     Boolean      @default(true)
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  categoryRel  Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+enum DocumentStatus {
+  DRAFT
+  IN_REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+model Document {
+  id               String       @id @default(cuid())
+  title            String
+  originalContent  String
+  correctedContent String?
+  wordCount        Int          @default(0)
+  status           DocumentStatus @default(DRAFT)
+  ownerId          String
+  owner            User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  orgId            String
+  org              Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  version          Int          @default(0)
+  corrections      Correction[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([ownerId])
+  @@index([orgId])
+}
+
+model Correction {
+  id           String   @id @default(cuid())
+  documentId   String
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  category     String   // GRAMMAR, CLARITY, TONE, STYLE
+  categoryId   String?
+  categoryRel  Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  originalText String
+  suggestedText String
+  explanation  String
+  offsetStart  Int
+  offsetEnd    Int
+  isApplied    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([documentId])
+  @@index([category])
+}
+
+model Category {
+  id          String       @id @default(cuid())
+  name        String       // "GRAMMAR", "CLARITY", etc.
+  label       String            // "Grammar & Spelling"
+  description String?
+  color       String       @default("#7c3aed")
+  sortOrder   Int          @default(0)
+  weight      Float        @default(1.0)
+  orgId       String?
+  org         Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  rules       Rule[]
+  corrections Correction[]
+
+  @@unique([name, orgId])
+  @@index([orgId])
+}
+
+model RateLimit {
+  id          String   @id @default(cuid())
+  key         String
+  windowStart DateTime
+  count       Int
+
+  @@unique([key, windowStart])
+  @@index([key, windowStart])
+  @@index([windowStart])
+  @@index([key])
+}
+
+model Role {
+  id          String      @id @default(cuid())
+  name        String      @unique  // "ADMIN", "PUBLISHER", "EDITOR", "VIEWER"
+  label       String               // "Administrator", "Publisher", etc.
+  permissions Json                 // e.g. ["rules:manage", "documents:read", "users:invite"]
+  orgId       String?
+  org         Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  users       User[]
+
+  @@index([orgId])
+}
+
+model Setting {
+  id        String       @id @default(cuid())
+  key       String       @unique
+  value     Json
+  label     String
+  type      String       @default("string") // "string", "number", "boolean", "json"
+  category  String       @default("general") // "general", "rate-limit", "ai", "scoring"
+  orgId     String?
+  org       Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  updatedAt DateTime     @updatedAt
+
+  @@index([orgId])
+}
+
+
