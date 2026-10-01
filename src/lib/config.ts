@@ -24,10 +24,10 @@ export const config = {
     login: { limit: Number(process.env.RATE_LIMIT_LOGIN) || 5, windowMs: 60000 },
     proofread: { limit: Number(process.env.RATE_LIMIT_PROOFREAD) || 20, windowMs: 60000 },
   },
-  gemini: {
-    apiKey: process.env.GEMINI_API_KEY || "",
-    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-    timeoutMs: Number(process.env.GEMINI_TIMEOUT_MS) || 30000,
+  ai: {
+    apiKey: process.env.GROQ_API_KEY || "",
+    model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+    timeoutMs: Number(process.env.GROQ_TIMEOUT_MS) || 30000,
   },
   app: {
     contentMaxLength: Number(process.env.CONTENT_MAX_LENGTH) || 50000,

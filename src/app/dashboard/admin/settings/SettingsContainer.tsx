@@ -117,7 +117,7 @@ export default function SettingsContainer() {
           return;
         }
       }
-      if (setting.key === "gemini_timeout_ms") {
+      if (setting.key === "ai_timeout_ms") {
         const val = Number(setting.value);
         if (isNaN(val) || val < 1000 || val > 120000) {
           setError("AI timeout must be between 1,000ms (1s) and 120,000ms (2m).");
@@ -466,9 +466,9 @@ export default function SettingsContainer() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-3">
-                    {/* Gemini AI Model Selection */}
+                    {/* AI Model Selection */}
                     {settings
-                      .filter((s) => s.key === "gemini_model")
+                      .filter((s) => s.key === "ai_model")
                       .map((setting) => (
                         <div key={setting.key} className="flex flex-col gap-2">
                           <label className="text-sm font-semibold text-zinc-300">
@@ -479,9 +479,10 @@ export default function SettingsContainer() {
                             onChange={(e) => handleSettingChange(setting.key, e.target.value)}
                             className="w-full h-11 px-3.5 bg-black/40 border border-white/10 rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm font-medium"
                           >
-                            <option value="gemini-2.5-flash">Gemini 2.5 Flash (Default — Extremely Fast)</option>
-                            <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Grammar & Heavy Reasoning)</option>
-                            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Legacy Model)</option>
+                            <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Default — Balanced)</option>
+                            <option value="openai/gpt-oss-120b">GPT-OSS 120B (Deep Grammar & Heavy Reasoning)</option>
+                            <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Fastest, Lightweight)</option>
+                            <option value="qwen/qwen3-32b">Qwen 3 32B (Strong Reasoning)</option>
                           </select>
                           <p className="text-[10px] text-muted-foreground/80 flex items-start gap-1">
                             <Activity className="w-3.5 h-3.5 mt-0.5 shrink-0" />
@@ -490,9 +491,9 @@ export default function SettingsContainer() {
                         </div>
                       ))}
 
-                    {/* Gemini Timeout */}
+                    {/* AI Timeout */}
                     {settings
-                      .filter((s) => s.key === "gemini_timeout_ms")
+                      .filter((s) => s.key === "ai_timeout_ms")
                       .map((setting) => (
                         <div key={setting.key} className="flex flex-col gap-2">
                           <label className="text-sm font-semibold text-zinc-300">

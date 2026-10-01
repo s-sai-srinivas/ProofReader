@@ -11,8 +11,8 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/config", () => ({
   config: {
-    gemini: {
-      apiKey: "some-long-gemini-api-key-here-for-test",
+    ai: {
+      apiKey: "some-long-ai-api-key-here-for-test",
     },
   },
 }));
@@ -22,9 +22,9 @@ describe("GET /api/health", () => {
     vi.resetAllMocks();
   });
 
-  it("should return 200 and 'ok' status when DB query succeeds and Gemini key is configured", async () => {
+  it("should return 200 and 'ok' status when DB query succeeds and AI key is configured", async () => {
     vi.mocked(db.$queryRaw).mockResolvedValue([1]);
-    config.gemini.apiKey = "valid-length-gemini-key-123456789";
+    config.ai.apiKey = "valid-length-ai-key-123456789";
 
     const response = await GET();
     expect(response.status).toBe(200);
@@ -32,14 +32,14 @@ describe("GET /api/health", () => {
     const body = await response.json();
     expect(body.status).toBe("ok");
     expect(body.checks.database.status).toBe("ok");
-    expect(body.checks.gemini.status).toBe("ok");
-    expect(body.checks.gemini.configured).toBe(true);
+    expect(body.checks.ai.status).toBe("ok");
+    expect(body.checks.ai.configured).toBe(true);
     expect(db.$queryRaw).toHaveBeenCalled();
   });
 
   it("should return 503 and 'degraded' status if database query throws an error", async () => {
     vi.mocked(db.$queryRaw).mockRejectedValue(new Error("DB error"));
-    config.gemini.apiKey = "valid-length-gemini-key-123456789";
+    config.ai.apiKey = "valid-length-ai-key-123456789";
 
     const response = await GET();
     expect(response.status).toBe(503);
@@ -47,12 +47,12 @@ describe("GET /api/health", () => {
     const body = await response.json();
     expect(body.status).toBe("degraded");
     expect(body.checks.database.status).toBe("error");
-    expect(body.checks.gemini.status).toBe("ok");
+    expect(body.checks.ai.status).toBe("ok");
   });
 
-  it("should return 503 and 'degraded' status if Gemini API key is missing or too short", async () => {
+  it("should return 503 and 'degraded' status if AI API key is missing or too short", async () => {
     vi.mocked(db.$queryRaw).mockResolvedValue([1]);
-    config.gemini.apiKey = "short";
+    config.ai.apiKey = "short";
 
     const response = await GET();
     expect(response.status).toBe(503);
@@ -60,7 +60,7 @@ describe("GET /api/health", () => {
     const body = await response.json();
     expect(body.status).toBe("degraded");
     expect(body.checks.database.status).toBe("ok");
-    expect(body.checks.gemini.status).toBe("error");
-    expect(body.checks.gemini.configured).toBe(false);
+    expect(body.checks.ai.status).toBe("error");
+    expect(body.checks.ai.configured).toBe(false);
   });
 });

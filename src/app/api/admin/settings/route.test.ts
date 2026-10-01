@@ -147,9 +147,9 @@ describe("Settings API Endpoints (/api/admin/settings)", () => {
       vi.mocked(hasPermission).mockReturnValue(true);
 
       const requestSettings = [
-        { key: "gemini_timeout_ms", value: "30000", type: "number" },
+        { key: "ai_timeout_ms", value: "30000", type: "number" },
         { key: "enable_strict_auth", value: "true", type: "boolean" },
-        { key: "gemini_model", value: "gemini-2.5-flash", type: "string" },
+        { key: "ai_model", value: "llama-3.3-70b-versatile", type: "string" },
       ];
 
       const req = new Request("http://localhost/api/admin/settings", {
@@ -168,7 +168,7 @@ describe("Settings API Endpoints (/api/admin/settings)", () => {
       // Verify transaction database updates were triggered with casted types
       expect(db.setting.update).toHaveBeenCalledTimes(3);
       expect(db.setting.update).toHaveBeenNthCalledWith(1, {
-        where: { key: "gemini_timeout_ms" },
+        where: { key: "ai_timeout_ms" },
         data: { value: 30000 },
       });
       expect(db.setting.update).toHaveBeenNthCalledWith(2, {
@@ -176,8 +176,8 @@ describe("Settings API Endpoints (/api/admin/settings)", () => {
         data: { value: true },
       });
       expect(db.setting.update).toHaveBeenNthCalledWith(3, {
-        where: { key: "gemini_model" },
-        data: { value: "gemini-2.5-flash" },
+        where: { key: "ai_model" },
+        data: { value: "llama-3.3-70b-versatile" },
       });
 
       // Assert settings cache was invalidated

@@ -1,6 +1,5 @@
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ProofreadSchema } from "@/lib/validation";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { logError } from "@/lib/logger";
@@ -28,7 +27,19 @@ interface AICorrection {
   offsetEnd: number;
 }
 
-function parseGeminiJson(text: string): AICorrection[] {
+function unwrapCorrections(parsed: unknown): AICorrection[] {
+  if (Array.isArray(parsed)) return parsed as AICorrection[];
+  if (
+    parsed &&
+    typeof parsed === "object" &&
+    Array.isArray((parsed as { corrections?: unknown }).corrections)
+  ) {
+    return (parsed as { corrections: AICorrection[] }).corrections;
+  }
+  throw new Error("AI response is not a corrections array");
+}
+
+function parseAIJson(text: string): AICorrection[] {
   let cleaned = text.trim();
 
   const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
@@ -37,25 +48,56 @@ function parseGeminiJson(text: string): AICorrection[] {
   }
 
   try {
-    return JSON.parse(cleaned) as AICorrection[];
+    return unwrapCorrections(JSON.parse(cleaned));
   } catch (firstErr) {
     const arrayMatch = cleaned.match(/\[\s*\{[\s\S]*?\}\s*\]/);
     if (arrayMatch) {
       try {
         return JSON.parse(arrayMatch[0]) as AICorrection[];
       } catch (fallbackErr) {
-        logError("GEMINI_JSON_FALLBACK_PARSE_FAILED", fallbackErr, {
+        logError("AI_JSON_FALLBACK_PARSE_FAILED", fallbackErr, {
           snippet: text.slice(0, 500),
         });
         throw fallbackErr;
       }
     }
 
-    logError("GEMINI_JSON_PARSE_FAILED", firstErr, {
+    logError("AI_JSON_PARSE_FAILED", firstErr, {
       snippet: text.slice(0, 500),
     });
     throw firstErr;
   }
+}
+
+async function callGroq(apiKey: string, model: string, systemInstruction: string, prompt: string): Promise<string> {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => "");
+    throw new Error(`Groq API error ${res.status}: ${errBody.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content !== "string") {
+    throw new Error("Groq API response missing message content");
+  }
+  return content;
 }
 
 export async function POST(req: Request) {
@@ -144,11 +186,11 @@ export async function POST(req: Request) {
       }
     }
 
-    const apiKey = config.gemini.apiKey;
+    const apiKey = config.ai.apiKey;
     if (apiKey) {
       try {
-        const activeModelName = await getSetting("gemini_model", config.gemini.model);
-        const timeoutMs = await getSetting("gemini_timeout_ms", config.gemini.timeoutMs);
+        const activeModelName = await getSetting("ai_model", config.ai.model);
+        const timeoutMs = await getSetting("ai_timeout_ms", config.ai.timeoutMs);
 
         const safeContent = sanitizedContent
           .replace(/---BEGIN USER CONTENT---/g, "[DELIMITER_BLOCKED]")
@@ -156,7 +198,7 @@ export async function POST(req: Request) {
 
         const systemInstruction = `You are an expert AI proofreader. Scan the text for spelling, grammar, clarity, style, and tone errors. Provide appropriate corrections and explain why the changes are helpful.
 
-Return a JSON array of objects. Each correction object MUST have precisely this structure:
+Return a JSON object with a single "corrections" key containing an array of objects. Each correction object MUST have precisely this structure:
 {
   "category": ${activeCategoryNames.length > 0 ? activeCategoryNames.map((name) => `"${name}"`).join(" | ") : '"GRAMMAR" | "CLARITY" | "TONE" | "STYLE"'},
   "originalText": string (the exact text in the original document to replace),
@@ -168,17 +210,8 @@ Return a JSON array of objects. Each correction object MUST have precisely this 
 
 Important Rules:
 - Ensure "offsetStart" and "offsetEnd" are mathematically correct relative to the original text.
-- If no corrections are needed, return an empty array [].
-- Return ONLY the raw JSON array.`;
-
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-          model: activeModelName,
-          systemInstruction,
-          generationConfig: {
-            responseMimeType: "application/json",
-          },
-        });
+- If no corrections are needed, return {"corrections": []}.
+- Return ONLY the raw JSON object.`;
 
         const prompt = `---BEGIN USER CONTENT---
 ${safeContent}
@@ -188,15 +221,15 @@ ${safeContent}
           setTimeout(() => reject(new Error(`AI proofreading request timed out after ${timeoutMs / 1000} seconds`)), timeoutMs)
         );
 
-        const result = await Promise.race([
-          model.generateContent(prompt),
+        const responseText = await Promise.race([
+          callGroq(apiKey, activeModelName, systemInstruction, prompt),
           timeoutPromise
         ]);
 
         await db.rateLimit.upsert({
           where: {
             key_windowStart: {
-              key: "total-gemini-calls",
+              key: "total-ai-calls",
               windowStart: new Date(0),
             },
           },
@@ -204,18 +237,16 @@ ${safeContent}
             count: { increment: 1 },
           },
           create: {
-            key: "total-gemini-calls",
+            key: "total-ai-calls",
             windowStart: new Date(0),
             count: 1,
           },
         }).catch(err => logError("COST_AWARENESS_LOG_FAILED", err));
 
-        const responseText = result.response.text();
-
         if (responseText) {
           let aiCorrections: AICorrection[] = [];
           try {
-            aiCorrections = parseGeminiJson(responseText);
+            aiCorrections = parseAIJson(responseText);
           } catch (parseErr) {
             logError("API_PROOFREAD_AI_PARSE_FAILED", parseErr, { responseText });
           }

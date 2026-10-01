@@ -13,7 +13,7 @@ export default defineConfig({
     },
     env: {
       JWT_SECRET: "test-jwt-secret-that-is-long-enough-for-testing-12345",
-      GEMINI_API_KEY: "test-key-not-used-in-ci",
+      GROQ_API_KEY: "test-key-not-used-in-ci",
     },
   },
   resolve: {

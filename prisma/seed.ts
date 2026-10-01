@@ -243,14 +243,14 @@ async function main() {
       category: "general",
     },
     {
-      key: "gemini_model",
+      key: "ai_model",
       label: "AI Language Model",
-      value: "gemini-2.5-flash",
+      value: "llama-3.3-70b-versatile",
       type: "string",
       category: "ai",
     },
     {
-      key: "gemini_timeout_ms",
+      key: "ai_timeout_ms",
       label: "AI Request Timeout (ms)",
       value: 30000,
       type: "number",
@@ -264,6 +264,11 @@ async function main() {
       category: "rate-limit",
     },
   ];
+
+  // Remove legacy Gemini-era setting keys superseded by ai_*
+  await prisma.setting.deleteMany({
+    where: { key: { in: ["gemini_model", "gemini_timeout_ms"] } },
+  });
 
   console.log("Seeding default system settings...");
   for (const setting of defaultSettings) {

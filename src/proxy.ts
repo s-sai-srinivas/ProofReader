@@ -33,7 +33,7 @@ export async function proxy(request: NextRequest) {
 
   // Security: Generate a one-time dynamic nonce for script-src to drop unsafe-inline scripts
   const nonce = crypto.randomUUID();
-  const cspHeader = `default-src 'self'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com; form-action 'self'; base-uri 'self'; object-src 'none';`;
+  const cspHeader = `default-src 'self'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.groq.com; form-action 'self'; base-uri 'self'; object-src 'none';`;
 
   let isAuthenticated = false;
   let decodedPayload: JwtPayload | null = null;

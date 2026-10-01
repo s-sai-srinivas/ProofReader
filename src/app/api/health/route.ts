@@ -12,7 +12,7 @@ interface HealthStatus {
   uptime: number;
   checks: {
     database: { status: "ok" | "error"; latencyMs: number };
-    gemini: { status: "ok" | "error"; configured: boolean };
+    ai: { status: "ok" | "error"; configured: boolean };
   };
 }
 
@@ -26,7 +26,7 @@ export async function GET() {
     uptime: process.uptime(),
     checks: {
       database: { status: "ok", latencyMs: 0 },
-      gemini: { status: "ok", configured: true },
+      ai: { status: "ok", configured: true },
     },
   };
 
@@ -44,13 +44,13 @@ export async function GET() {
   }
 
   try {
-    const geminiKey = config.gemini.apiKey;
-    result.checks.gemini.configured = !!geminiKey && geminiKey.length > 10;
-    result.checks.gemini.status = result.checks.gemini.configured ? "ok" : "error";
-    if (!result.checks.gemini.configured) allHealthy = false;
+    const aiKey = config.ai.apiKey;
+    result.checks.ai.configured = !!aiKey && aiKey.length > 10;
+    result.checks.ai.status = result.checks.ai.configured ? "ok" : "error";
+    if (!result.checks.ai.configured) allHealthy = false;
   } catch {
-    result.checks.gemini.configured = false;
-    result.checks.gemini.status = "error";
+    result.checks.ai.configured = false;
+    result.checks.ai.status = "error";
     allHealthy = false;
   }
 

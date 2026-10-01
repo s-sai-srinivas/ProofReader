@@ -3,7 +3,6 @@ import { POST } from "./route";
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isRateLimited } from "@/lib/rateLimit";
-// import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getSetting } from "@/lib/settings";
 
 vi.mock("@/lib/auth", () => ({
@@ -33,21 +32,18 @@ vi.mock("@/lib/settings", () => ({
 }));
 
 // Hoist variables before vi.mock executes to avoid parent scope resolution order errors
-const { mockGenerateContent } = vi.hoisted(() => ({
-  mockGenerateContent: vi.fn(),
+const { mockFetch } = vi.hoisted(() => ({
+  mockFetch: vi.fn(),
 }));
 
-// Deep mock for GoogleGenerativeAI
-vi.mock("@google/generative-ai", () => {
-  class MockGoogleGenerativeAI {
-    getGenerativeModel = vi.fn().mockReturnValue({
-      generateContent: mockGenerateContent,
-    });
-  }
-  return {
-    GoogleGenerativeAI: MockGoogleGenerativeAI,
-  };
-});
+vi.stubGlobal("fetch", mockFetch);
+
+function groqResponse(content: string) {
+  return Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({ choices: [{ message: { content } }] }),
+  } as unknown as Response);
+}
 
 describe("AI Proofread API Endpoint (/api/proofread)", () => {
   const mockUser = {
@@ -121,9 +117,9 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
       ];
       vi.mocked(db.rule.findMany).mockResolvedValue(localRules as unknown as Awaited<ReturnType<typeof db.rule.findMany>>);
 
-      // Disable Gemini key for this unit block to isolate rules matching
-      const originalApiKey = process.env.GEMINI_API_KEY;
-      delete process.env.GEMINI_API_KEY;
+      // Disable Groq key for this unit block to isolate rules matching
+      const originalApiKey = process.env.GROQ_API_KEY;
+      delete process.env.GROQ_API_KEY;
 
       const response = await POST(new Request("http://localhost/api/proofread", {
         method: "POST",
@@ -145,16 +141,16 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
       });
 
       // Restore key
-      process.env.GEMINI_API_KEY = originalApiKey;
+      process.env.GROQ_API_KEY = originalApiKey;
     });
 
-    it("should merge local rules with safe Gemini JSON corrections, filtering out category mismatches", async () => {
+    it("should merge local rules with safe AI JSON corrections, filtering out category mismatches", async () => {
       vi.mocked(getSessionUser).mockResolvedValue(mockUser);
       vi.mocked(db.category.findMany).mockResolvedValue(activeCategories as unknown as Awaited<ReturnType<typeof db.category.findMany>>);
       vi.mocked(db.rule.findMany).mockResolvedValue([]); // No local rules
 
-      // Mock Gemini JSON output with valid category and invalid category corrections
-      const geminiJson = [
+      // Mock AI JSON output with valid category and invalid category corrections
+      const aiJson = [
         {
           category: "GRAMMAR",
           originalText: "receive",
@@ -173,11 +169,7 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
         },
       ];
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => JSON.stringify(geminiJson),
-        },
-      });
+      mockFetch.mockReturnValue(groqResponse(JSON.stringify({ corrections: aiJson })));
 
       vi.mocked(db.rateLimit.upsert).mockResolvedValue({} as unknown as Awaited<ReturnType<typeof db.rateLimit.upsert>>);
 
@@ -194,7 +186,7 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
       // Let's configure the exact offset in the payload to match string slice
       const textContent = "This is some receive content.";
       // offsetStart: 13, offsetEnd: 20
-      const correctGeminiJson = [
+      const correctAIJson = [
         {
           category: "GRAMMAR",
           originalText: "receive",
@@ -205,11 +197,9 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
         },
       ];
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => `\`\`\`json\n${JSON.stringify(correctGeminiJson)}\n\`\`\``, // Test markdown fence parsing too
-        },
-      });
+      mockFetch.mockReturnValue(
+        groqResponse(`\`\`\`json\n${JSON.stringify({ corrections: correctAIJson })}\n\`\`\``) // Test markdown fence parsing too
+      );
 
       const successfulResponse = await POST(new Request("http://localhost/api/proofread", {
         method: "POST",
@@ -228,7 +218,7 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
       expect(db.rateLimit.upsert).toHaveBeenCalledWith(expect.objectContaining({
         where: {
           key_windowStart: {
-            key: "total-gemini-calls",
+            key: "total-ai-calls",
             windowStart: expect.any(Date),
           },
         },
@@ -241,7 +231,7 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
       vi.mocked(db.rule.findMany).mockResolvedValue([]);
 
       // Mock AI returning incorrect offsets (originalText "bad" but offset slices "text")
-      const shiftedGeminiJson = [
+      const shiftedAIJson = [
         {
           category: "GRAMMAR",
           originalText: "bad",
@@ -252,11 +242,7 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
         },
       ];
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => JSON.stringify(shiftedGeminiJson),
-        },
-      });
+      mockFetch.mockReturnValue(groqResponse(JSON.stringify({ corrections: shiftedAIJson })));
 
       const response = await POST(new Request("http://localhost/api/proofread", {
         method: "POST",
@@ -281,7 +267,7 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
       vi.mocked(db.rule.findMany).mockResolvedValue(rulesList as unknown as Awaited<ReturnType<typeof db.rule.findMany>>);
 
       // AI correction matches "bad sentence" (index 10..22), which overlaps rules correction
-      const overlappingGeminiJson = [
+      const overlappingAIJson = [
         {
           category: "CLARITY",
           originalText: "bad sentence",
@@ -292,11 +278,7 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
         },
       ];
 
-      mockGenerateContent.mockResolvedValue({
-        response: {
-          text: () => JSON.stringify(overlappingGeminiJson),
-        },
-      });
+      mockFetch.mockReturnValue(groqResponse(JSON.stringify({ corrections: overlappingAIJson })));
 
       const response = await POST(new Request("http://localhost/api/proofread", {
         method: "POST",
@@ -314,7 +296,7 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
   });
 
   describe("API Timeout Controls", () => {
-    it("should abort Gemini calls taking longer than configurated timeout and fallback to local rules safely", async () => {
+    it("should abort AI calls taking longer than configurated timeout and fallback to local rules safely", async () => {
       vi.mocked(getSessionUser).mockResolvedValue(mockUser);
       vi.mocked(db.category.findMany).mockResolvedValue(activeCategories as unknown as Awaited<ReturnType<typeof db.category.findMany>>);
       
@@ -324,16 +306,16 @@ describe("AI Proofread API Endpoint (/api/proofread)", () => {
       ];
       vi.mocked(db.rule.findMany).mockResolvedValue(localRules as unknown as Awaited<ReturnType<typeof db.rule.findMany>>);
 
-      // Mock Gemini call to hang/take long (e.g. 50ms)
-      mockGenerateContent.mockImplementation(() => {
-        return new Promise((resolve) => setTimeout(() => resolve({
-          response: { text: () => "[]" },
-        }), 60));
+      // Mock AI call to hang/take long (e.g. 60ms)
+      mockFetch.mockImplementation(() => {
+        return new Promise((resolve) => setTimeout(() => resolve(
+          groqResponse("{}")
+        ), 60));
       });
 
       // Override mock settings specifically to enforce a fast 10ms timeout for test race
       vi.mocked(getSetting).mockImplementation((key: unknown, defaultValue: unknown) => {
-        if (key === "gemini_timeout_ms") return Promise.resolve(10); // 10ms timeout
+        if (key === "ai_timeout_ms") return Promise.resolve(10); // 10ms timeout
         return Promise.resolve(defaultValue);
       });
 
