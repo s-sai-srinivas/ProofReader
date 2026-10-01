@@ -245,7 +245,7 @@ async function main() {
     {
       key: "ai_model",
       label: "AI Language Model",
-      value: "llama-3.3-70b-versatile",
+      value: "openai/gpt-oss-120b",
       type: "string",
       category: "ai",
     },

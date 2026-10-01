@@ -149,7 +149,7 @@ describe("Settings API Endpoints (/api/admin/settings)", () => {
       const requestSettings = [
         { key: "ai_timeout_ms", value: "30000", type: "number" },
         { key: "enable_strict_auth", value: "true", type: "boolean" },
-        { key: "ai_model", value: "llama-3.3-70b-versatile", type: "string" },
+        { key: "ai_model", value: "openai/gpt-oss-120b", type: "string" },
       ];
 
       const req = new Request("http://localhost/api/admin/settings", {
@@ -177,7 +177,7 @@ describe("Settings API Endpoints (/api/admin/settings)", () => {
       });
       expect(db.setting.update).toHaveBeenNthCalledWith(3, {
         where: { key: "ai_model" },
-        data: { value: "llama-3.3-70b-versatile" },
+        data: { value: "openai/gpt-oss-120b" },
       });
 
       // Assert settings cache was invalidated

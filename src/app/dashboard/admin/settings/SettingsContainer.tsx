@@ -479,10 +479,9 @@ export default function SettingsContainer() {
                             onChange={(e) => handleSettingChange(setting.key, e.target.value)}
                             className="w-full h-11 px-3.5 bg-black/40 border border-white/10 rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm font-medium"
                           >
-                            <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Default — Balanced)</option>
-                            <option value="openai/gpt-oss-120b">GPT-OSS 120B (Deep Grammar & Heavy Reasoning)</option>
-                            <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Fastest, Lightweight)</option>
-                            <option value="qwen/qwen3-32b">Qwen 3 32B (Strong Reasoning)</option>
+                            <option value="openai/gpt-oss-120b">GPT-OSS 120B (Default — Deep Grammar & Reasoning)</option>
+                            <option value="openai/gpt-oss-20b">GPT-OSS 20B (Faster, Lightweight)</option>
+                            <option value="qwen/qwen3.8-27b">Qwen 3.8 27B (Alternative)</option>
                           </select>
                           <p className="text-[10px] text-muted-foreground/80 flex items-start gap-1">
                             <Activity className="w-3.5 h-3.5 mt-0.5 shrink-0" />
