@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Sparkles, AlertTriangle, ArrowLeft } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -10,16 +10,20 @@ import GlassPanel from "@/components/ui/GlassPanel";
 
 export default function LoginContainer() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const rawFrom = searchParams.get("from") || "/dashboard";
-  const isValidRelative =
-    rawFrom.startsWith("/") &&
-    !rawFrom.startsWith("//") &&
-    !rawFrom.startsWith("/\\") &&
-    !rawFrom.includes(":") &&
-    !rawFrom.includes("\\") &&
-    (rawFrom === "/dashboard" || rawFrom.startsWith("/dashboard/"));
-  const from = isValidRelative ? rawFrom : "/dashboard";
+  // Read `from` lazily at submit time — render-time useSearchParams() stalls
+  // hydration under the static Suspense shell on this deployment target.
+  const resolveFrom = () => {
+    const rawFrom =
+      new URLSearchParams(window.location.search).get("from") || "/dashboard";
+    const isValidRelative =
+      rawFrom.startsWith("/") &&
+      !rawFrom.startsWith("//") &&
+      !rawFrom.startsWith("/\\") &&
+      !rawFrom.includes(":") &&
+      !rawFrom.includes("\\") &&
+      (rawFrom === "/dashboard" || rawFrom.startsWith("/dashboard/"));
+    return isValidRelative ? rawFrom : "/dashboard";
+  };
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +48,7 @@ export default function LoginContainer() {
         throw new Error(data.error || "Login failed");
       }
 
-      router.push(from);
+      router.push(resolveFrom());
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");

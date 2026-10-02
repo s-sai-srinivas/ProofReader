@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Sparkles, Save, Feather, Check, AlertCircle, Edit3, Eye } from "lucide-react";
 import Link from "next/link";
 import { clientFetch } from "@/lib/client-fetch";
@@ -26,10 +25,13 @@ interface CategoryInfo {
 }
 
 export default function EditorContainer() {
-  const searchParams = useSearchParams();
-  const docId = searchParams.get("id");
-
-  const [documentId, setDocumentId] = useState<string | null>(docId);
+  // Read `?id=` lazily on mount — render-time useSearchParams() stalls
+  // hydration under the static Suspense shell on this deployment target.
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("id");
+    if (id) setDocumentId(id);
+  }, []);
   const [title, setTitle] = useState("Untitled Document");
   const [content, setContent] = useState("");
   const [suggestions, setSuggestions] = useState<LocalCorrection[]>([]);

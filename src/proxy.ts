@@ -31,9 +31,10 @@ export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-request-id", requestId);
 
-  // Security: Generate a one-time dynamic nonce for script-src to drop unsafe-inline scripts
-  const nonce = crypto.randomUUID();
-  const cspHeader = `default-src 'self'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.groq.com; form-action 'self'; base-uri 'self'; object-src 'none';`;
+  // Security headers for proxied routes. NOTE: script-src must allow 'unsafe-inline'
+  // because Next.js hydration bootstrap scripts are inline and this deployment does
+  // not stamp nonces onto framework script tags — a nonce-only CSP breaks hydration.
+  const cspHeader = `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.groq.com; form-action 'self'; base-uri 'self'; object-src 'none';`;
 
   let isAuthenticated = false;
   let decodedPayload: JwtPayload | null = null;
