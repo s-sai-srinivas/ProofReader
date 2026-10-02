@@ -219,9 +219,10 @@ export default function CategoriesContainer() {
     setCategories(list);
 
     try {
+      let persisted = true;
       for (let i = 0; i < list.length; i++) {
         if (list[i].sortOrder !== i) {
-          await clientFetch("/api/admin/categories", {
+          const res = await clientFetch("/api/admin/categories", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -229,10 +230,16 @@ export default function CategoriesContainer() {
               sortOrder: i,
             }),
           });
+          if (!res.ok) persisted = false;
         }
+      }
+      if (!persisted) {
+        setError("System default categories cannot be reordered");
+        fetchCategories();
       }
     } catch (err) {
       console.error("Reorder synchronization failed", err);
+      fetchCategories();
     }
   };
 
@@ -259,9 +266,10 @@ export default function CategoriesContainer() {
     setDraggedIndex(null);
 
     try {
+      let persisted = true;
       for (let i = 0; i < list.length; i++) {
         if (list[i].sortOrder !== i) {
-          await clientFetch("/api/admin/categories", {
+          const res = await clientFetch("/api/admin/categories", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -269,10 +277,16 @@ export default function CategoriesContainer() {
               sortOrder: i,
             }),
           });
+          if (!res.ok) persisted = false;
         }
+      }
+      if (!persisted) {
+        setError("System default categories cannot be reordered");
+        fetchCategories();
       }
     } catch (err) {
       console.error("Reorder drag synchronization failed", err);
+      fetchCategories();
     }
   };
 

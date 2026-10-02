@@ -58,6 +58,8 @@ export const RuleSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+export const RuleUpdateSchema = RuleSchema.partial();
+
 export async function validateCategory(categoryName: string, orgId?: string | null): Promise<boolean> {
   const cleanName = categoryName.trim().toUpperCase();
   const category = await db.category.findFirst({

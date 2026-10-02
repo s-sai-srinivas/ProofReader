@@ -40,7 +40,13 @@ export default function SignupContainer() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Registration failed");
+        const detailErrors =
+          data?.details && typeof data.details === "object"
+            ? Object.values(data.details)
+                .flatMap((f) => (f as { _errors?: string[] })?._errors ?? [])
+                .filter(Boolean)
+            : [];
+        throw new Error(detailErrors[0] || data.error || "Registration failed");
       }
 
       router.push("/dashboard");

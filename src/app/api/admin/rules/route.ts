@@ -1,6 +1,6 @@
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { RuleSchema } from "@/lib/validation";
+import { RuleSchema, RuleUpdateSchema } from "@/lib/validation";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { hasPermission } from "@/lib/permissions";
 import { handleApiError } from "@/lib/error-handler";
@@ -131,7 +131,7 @@ export async function PUT(req: Request) {
       return apiError(400, "Invalid JSON payload");
     }
 
-    const validation = RuleSchema.safeParse(body);
+    const validation = RuleUpdateSchema.safeParse(body);
     if (!validation.success) {
       return apiError(400, "Validation failed", validation.error.format());
     }
